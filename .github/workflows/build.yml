@@ -1,0 +1,57 @@
+name: Build KeyTotem Mod
+
+# This workflow runs on any push to the 'main' branch or can be triggered manually.
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    # Use the latest version of Ubuntu to run the job
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Get the code from your repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Find and unzip the source code if a .zip file is present
+      - name: Find and Unzip Source Code
+        run: |
+          # Find the first .zip file in the root directory of your project
+          ZIP_FILE=$(find . -maxdepth 1 -type f -name "*.zip" | head -n 1)
+          if [ -f "$ZIP_FILE" ]; then
+            echo "==> Found source zip: $ZIP_FILE. Unzipping now..."
+            # Unzip the file, overwriting any existing files in the repository.
+            # The -o flag ensures it overwrites without asking.
+            unzip -o "$ZIP_FILE" -d .
+            echo "==> Unzip complete."
+          else
+            echo "==> No .zip file found in root. Building with existing files."
+          fi
+
+      # 3. Set up the correct Java version required for Minecraft 1.21.5
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      # 4. Make the Gradle wrapper script executable
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      # 5. Build the project using the Gradle wrapper
+      - name: Build with Gradle
+        run: ./gradlew build
+        
+      # 6. Upload the compiled mod .jar file as an artifact
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          # The name of the artifact that will be available for download
+          name: KeyTotem-1.21.5-Build
+          # The path to the file to upload. This pattern grabs the final mod jar
+          # while ignoring the '-dev' and '-sources' jars.
+          path: build/libs/!(*-dev|*-sources).jar
